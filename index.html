@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head><title>BinaryScope Test</title></head>
+<body style="background:#0a0e17;color:#fff;font-family:monospace;padding:20px;">
+<h2>BinaryScope — Connection Test</h2>
+<div id="log"></div>
+<script>
+const APP_ID = "34uyXsvpWw49ADvhNsk3y";
+const log = (m) => document.getElementById("log").innerHTML += "<div>" + m + "</div>";
+log("Connecting...");
+const ws = new WebSocket(`wss://ws.derivws.com/websockets/v3?app_id=${APP_ID}`);
+ws.onopen = () => { log("✅ CONNECTED"); ws.send(JSON.stringify({ticks:"frxEURUSD",subscribe:1})); };
+ws.onmessage = (m) => log("📩 " + m.data.substring(0,100));
+ws.onerror = () => log("❌ ERROR");
+ws.onclose = () => log("🔌 CLOSED");
+</script>
+</body>
+</html>
