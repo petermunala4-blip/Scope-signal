@@ -1,18 +1,403 @@
 <!DOCTYPE html>
-<html>
-<head><title>BinaryScope Test</title></head>
-<body style="background:#0a0e17;color:#fff;font-family:monospace;padding:20px;">
-<h2>BinaryScope — Connection Test</h2>
-<div id="log"></div>
-<script>
-const APP_ID = "34uyXsvpWw49ADvhNsk3y";
-const log = (m) => document.getElementById("log").innerHTML += "<div>" + m + "</div>";
-log("Connecting...");
-const ws = new WebSocket(`wss://ws.derivws.com/websockets/v3?app_id=${APP_ID}`);
-ws.onopen = () => { log("✅ CONNECTED"); ws.send(JSON.stringify({ticks:"frxEURUSD",subscribe:1})); };
-ws.onmessage = (m) => log("📩 " + m.data.substring(0,100));
-ws.onerror = () => log("❌ ERROR");
-ws.onclose = () => log("🔌 CLOSED");
-</script>
-</body>
-</html>
+‎<html lang="en">
+‎<head>
+‎<meta charset="UTF-8">
+‎<meta name="viewport" content="width=device-width, initial-scale=1.0">
+‎<title>BinaryScope</title>
+‎<style>
+‎  * { margin: 0; padding: 0; box-sizing: border-box; }
+‎  body {
+‎    font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+‎    background: #0a0e17;
+‎    color: #d1d4dc;
+‎    padding: 16px;
+‎    min-height: 100vh;
+‎  }
+‎  .container { max-width: 900px; margin: 0 auto; }
+‎
+‎  .header {
+‎    display: flex; justify-content: space-between; align-items: center;
+‎    padding: 12px 0; border-bottom: 1px solid #1e2430; margin-bottom: 16px;
+‎  }
+‎  .logo { font-size: 14px; letter-spacing: 3px; color: #5d6a82; font-weight: 600; }
+‎  .status { display: flex; align-items: center; gap: 8px; font-size: 11px; color: #5d6a82; }
+‎  .dot { width: 8px; height: 8px; border-radius: 50%; background: #ff4d4d; }
+‎  .dot.live { background: #00e676; box-shadow: 0 0 8px #00e676; }
+‎
+‎  .panel {
+‎    background: #11161f; border: 1px solid #1e2430; border-radius: 6px;
+‎    padding: 14px; margin-bottom: 14px;
+‎  }
+‎  .panel-title {
+‎    font-size: 10px; letter-spacing: 2px; color: #5d6a82;
+‎    display: flex; justify-content: space-between; align-items: center;
+‎    margin-bottom: 12px;
+‎  }
+‎  .badge { color: #00e676; font-size: 10px; }
+‎  .risk-grid {
+‎    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+‎  }
+‎  .risk-box {
+‎    background: #0a0e17; border: 1px solid #1e2430; border-radius: 4px; padding: 10px;
+‎  }
+‎  .risk-label { font-size: 9px; letter-spacing: 1.5px; color: #5d6a82; margin-bottom: 4px; }
+‎  .risk-val { font-size: 18px; color: #fff; font-weight: 600; }
+‎  .loss-bar {
+‎    margin-top: 12px; height: 4px; background: #1e2430; border-radius: 2px; overflow: hidden;
+‎  }
+‎  .loss-fill { height: 100%; background: #ff9800; width: 0%; transition: width 0.4s; }
+‎
+‎  .scan-title {
+‎    font-size: 10px; letter-spacing: 2px; color: #5d6a82;
+‎    margin-bottom: 10px; display: flex; justify-content: space-between;
+‎  }
+‎  .scan-grid {
+‎    display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+‎  }
+‎  .tile {
+‎    background: #11161f; border: 1px solid #1e2430; border-radius: 4px;
+‎    padding: 12px 8px; text-align: center; transition: all 0.3s;
+‎    cursor: pointer;
+‎  }
+‎  .tile:hover { border-color: #3a4658; }
+‎  .tile.bullish { background: #0d2818; border-color: #00e676; }
+‎  .tile.bearish { background: #2a0e0e; border-color: #ff4d4d; }
+‎  .tile.neutral { opacity: 0.45; }
+‎  .tile-name { font-size: 10px; letter-spacing: 1px; color: #8b95a8; margin-bottom: 6px; }
+‎  .tile-score { font-size: 22px; font-weight: 700; color: #fff; }
+‎  .tile.bullish .tile-score { color: #00e676; }
+‎  .tile.bearish .tile-score { color: #ff4d4d; }
+‎  .tile-dir { font-size: 14px; margin-top: 4px; }
+‎  .tile-price { font-size: 9px; color: #5d6a82; margin-top: 4px; }
+‎
+‎  .exec-row { display: flex; gap: 8px; margin-bottom: 10px; }
+‎  .exec-field { flex: 1; }
+‎  .exec-label { font-size: 9px; letter-spacing: 1.5px; color: #5d6a82; margin-bottom: 4px; }
+‎  .exec-input {
+‎    width: 100%; background: #0a0e17; border: 1px solid #1e2430;
+‎    border-radius: 4px; padding: 10px; color: #fff; font-family: inherit; font-size: 14px;
+‎  }
+‎  .tf-row { display: flex; gap: 6px; margin-bottom: 12px; }
+‎  .tf {
+‎    flex: 1; padding: 8px; background: #0a0e17; border: 1px solid #1e2430;
+‎    border-radius: 4px; color: #8b95a8; font-family: inherit; font-size: 11px;
+‎    cursor: pointer; transition: all 0.2s;
+‎  }
+‎  .tf.active { background: #1e2430; color: #fff; border-color: #3a4658; }
+‎  .signal-line {
+‎    display: flex; justify-content: space-between; font-size: 11px;
+‎    color: #5d6a82; margin-bottom: 14px;
+‎  }
+‎  .signal-line .hot { color: #ff4d4d; }
+‎
+‎  .action-row { display: flex; gap: 10px; }
+‎  .btn {
+‎    flex: 1; padding: 14px; border: none; border-radius: 4px;
+‎    font-family: inherit; font-size: 14px; font-weight: 700;
+‎    letter-spacing: 1px; cursor: pointer; transition: all 0.2s;
+‎  }
+‎  .btn-call { background: #00e676; color: #0a0e17; }
+‎  .btn-call:hover { background: #00c853; }
+‎  .btn-put { background: #ff4d4d; color: #fff; }
+‎  .btn-put:hover { background: #e53935; }
+‎  .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+‎  .btn small { display: block; font-size: 10px; font-weight: 400; margin-top: 3px; opacity: 0.8; }
+‎
+‎  .log-panel {
+‎    margin-top: 14px; background: #0a0e17; border: 1px solid #1e2430;
+‎    border-radius: 4px; padding: 10px; font-size: 10px; color: #5d6a82;
+‎    max-height: 120px; overflow-y: auto;
+‎  }
+‎  .log-line { padding: 2px 0; }
+‎  .log-line.err { color: #ff4d4d; }
+‎  .log-line.ok { color: #00e676; }
+‎</style>
+‎</head>
+‎<body>
+‎<div class="container">
+‎
+‎  <div class="header">
+‎    <div class="logo">BINARYSCOPE</div>
+‎    <div class="status">
+‎      <span class="dot" id="statusDot"></span>
+‎      <span id="statusText">DISCONNECTED</span>
+‎    </div>
+‎  </div>
+‎
+‎  <div class="panel">
+‎    <div class="panel-title">
+‎      <span>🔒 RISK LOCK · CONSERVATIVE</span>
+‎      <span class="badge">ACTIVE</span>
+‎    </div>
+‎    <div class="risk-grid">
+‎      <div class="risk-box"><div class="risk-label">MAX TRADE</div><div class="risk-val">$10</div></div>
+‎      <div class="risk-box"><div class="risk-label">DAILY LOSS CAP</div><div class="risk-val">$50</div></div>
+‎      <div class="risk-box"><div class="risk-label">CONCURRENT</div><div class="risk-val">0/1</div></div>
+‎      <div class="risk-box"><div class="risk-label">DAILY TRADES</div><div class="risk-val">2/10</div></div>
+‎    </div>
+‎    <div style="display:flex; justify-content:space-between; font-size:10px; color:#5d6a82; margin-top:12px;">
+‎      <span>DAILY LOSS USED</span><span id="lossPct">0%</span>
+‎    </div>
+‎    <div class="loss-bar"><div class="loss-fill" id="lossFill"></div></div>
+‎  </div>
+‎
+‎  <div class="panel">
+‎    <div class="scan-title">
+‎      <span>LIVE PULSE SCANNER · 8 ASSETS</span>
+‎      <span id="tickRate">—</span>
+‎    </div>
+‎    <div class="scan-grid" id="scanGrid"></div>
+‎  </div>
+‎
+‎  <div class="panel">
+‎    <div class="panel-title">
+‎      <span>EXECUTION</span>
+‎      <span id="execAsset">EUR/USD</span>
+‎    </div>
+‎    <div class="exec-row">
+‎      <div class="exec-field">
+‎        <div class="exec-label">STAKE</div>
+‎        <input class="exec-input" id="stake" type="number" value="10" min="1">
+‎      </div>
+‎    </div>
+‎    <div class="exec-label" style="margin-bottom:6px;">EXPIRY</div>
+‎    <div class="tf-row" id="tfRow">
+‎      <button class="tf" data-tf="60">1m</button>
+‎      <button class="tf active" data-tf="120">2m</button>
+‎      <button class="tf" data-tf="300">5m</button>
+‎    </div>
+‎    <div class="signal-line">
+‎      <span>SIGNAL</span>
+‎      <span><span class="hot" id="sigScore">—</span> / 80% min</span>
+‎    </div>
+‎    <div class="action-row">
+‎      <button class="btn btn-call" id="btnCall" disabled>CALL <small id="callPct">—</small></button>
+‎      <button class="btn btn-put" id="btnPut" disabled>PUT <small id="putPct">—</small></button>
+‎    </div>
+‎  </div>
+‎
+‎  <div class="log-panel" id="logPanel"></div>
+‎
+‎</div>
+‎
+‎<script>
+‎// ═══════════════════════════════════════════════════════════
+‎// CONNECT VIA PROXY (CORS fix)
+‎// ═══════════════════════════════════════════════════════════
+‎const PROXY_URL = "wss://scope-signal-proxy.onrender.com";
+‎
+‎const ASSETS = [
+‎  { name: "EUR/USD", symbol: "frxEURUSD" },
+‎  { name: "GBP/USD", symbol: "frxGBPUSD" },
+‎  { name: "BTC/USD", symbol: "cryBTCUSD" },
+‎  { name: "ETH/USD", symbol: "cryETHUSD" },
+‎  { name: "XAU/USD", symbol: "frxXAUUSD" },
+‎  { name: "AUD/USD", symbol: "frxAUDUSD" },
+‎  { name: "USD/JPY", symbol: "frxUSDJPY" },
+‎  { name: "USD/CAD", symbol: "frxUSDCAD" },
+‎];
+‎
+‎const THRESHOLD = 80;
+‎let selectedTf = 120;
+‎let selectedAsset = "frxEURUSD";
+‎let ws = null;
+‎const state = {};
+‎
+‎function log(msg, type = "") {
+‎  const panel = document.getElementById("logPanel");
+‎  const line = document.createElement("div");
+‎  line.className = "log-line " + type;
+‎  line.textContent = "[" + new Date().toLocaleTimeString() + "] " + msg;
+‎  panel.appendChild(line);
+‎  panel.scrollTop = panel.scrollHeight;
+‎}
+‎
+‎// ─── Build tiles ───
+‎const grid = document.getElementById("scanGrid");
+‎ASSETS.forEach(a => {
+‎  state[a.symbol] = { price: 0, score: 0, direction: "neutral" };
+‎  const tile = document.createElement("div");
+‎  tile.className = "tile neutral";
+‎  tile.dataset.symbol = a.symbol;
+‎  tile.innerHTML = `
+‎    <div class="tile-name">${a.name}</div>
+‎    <div class="tile-score">—</div>
+‎    <div class="tile-dir">·</div>
+‎    <div class="tile-price">—</div>
+‎  `;
+‎  tile.addEventListener("click", () => {
+‎    selectedAsset = a.symbol;
+‎    document.getElementById("execAsset").textContent = a.name;
+‎    updateExecutionPanel();
+‎  });
+‎  grid.appendChild(tile);
+‎});
+‎
+‎document.querySelectorAll(".tf").forEach(btn => {
+‎  btn.addEventListener("click", () => {
+‎    document.querySelectorAll(".tf").forEach(b => b.classList.remove("active"));
+‎    btn.classList.add("active");
+‎    selectedTf = parseInt(btn.dataset.tf);
+‎    log("Timeframe changed to " + selectedTf + "s — refetching");
+‎    fetchHistory();
+‎  });
+‎});
+‎
+‎function connect() {
+‎  log("Connecting to proxy " + PROXY_URL);
+‎  ws = new WebSocket(PROXY_URL);
+‎
+‎  ws.onopen = () => {
+‎    setStatus(true, "CONNECTED");
+‎    log("Proxy connected. Subscribing to ticks...", "ok");
+‎    ASSETS.forEach(a => {
+‎      ws.send(JSON.stringify({ ticks: a.symbol, subscribe: 1 }));
+‎    });
+‎    fetchHistory();
+‎  };
+‎
+‎  ws.onmessage = (msg) => {
+‎    let data;
+‎    try { data = JSON.parse(msg.data); } catch (e) { return; }
+‎
+‎    if (data.error) {
+‎      log("ERROR: " + (data.error.message || JSON.stringify(data.error)), "err");
+‎      return;
+‎    }
+‎
+‎    if (data.tick && data.tick.symbol) {
+‎      const s = state[data.tick.symbol];
+‎      if (s) {
+‎        s.price = parseFloat(data.tick.quote);
+‎        renderTile(data.tick.symbol);
+‎      }
+‎    }
+‎
+‎    if (data.candles && data.echo_req && data.echo_req.ticks_history) {
+‎      const symbol = data.echo_req.ticks_history;
+‎      const candles = data.candles;
+‎      if (candles && candles.length >= 50) {
+‎        const scores = computeScores(candles);
+‎        const s = state[symbol];
+‎        if (s) {
+‎          s.score = scores.combined;
+‎          s.direction = scores.direction;
+‎          renderTile(symbol);
+‎          if (symbol === selectedAsset) updateExecutionPanel();
+‎        }
+‎      }
+‎    }
+‎  };
+‎
+‎  ws.onclose = (e) => {
+‎    setStatus(false, "DISCONNECTED");
+‎    log("Proxy closed (code " + e.code + "). Retrying in 5s...", "err");
+‎    setTimeout(connect, 5000);
+‎  };
+‎  ws.onerror = () => {
+‎    setStatus(false, "ERROR");
+‎    log("Proxy error — check console", "err");
+‎  };
+‎}
+‎
+‎function setStatus(live, text) {
+‎  document.getElementById("statusDot").className = "dot" + (live ? " live" : "");
+‎  document.getElementById("statusText").textContent = text;
+‎}
+‎
+‎function fetchHistory() {
+‎  if (!ws || ws.readyState !== 1) return;
+‎  log("Requesting candles (granularity=" + selectedTf + ")...");
+‎  ASSETS.forEach(a => {
+‎    ws.send(JSON.stringify({
+‎      ticks_history: a.symbol,
+‎      style: "candles",
+‎      granularity: selectedTf,
+‎      count: 120,
+‎      end: "latest"
+‎    }));
+‎  });
+‎}
+‎
+‎function computeScores(candles) {
+‎  const closes = candles.map(c => parseFloat(c.close));
+‎  const highs = candles.map(c => parseFloat(c.high));
+‎  const lows = candles.map(c => parseFloat(c.low));
+‎
+‎  const atrRecent = atr(highs, lows, closes, 14);
+‎  const atrAvg = atr(highs, lows, closes, 50);
+‎  let vol = 50;
+‎  if (atrAvg > 0) {
+‎    const ratio = atrRecent / atrAvg;
+‎    vol = Math.min(100, Math.max(0, ratio * 50));
+‎  }
+‎
+‎  const emaFast = ema(closes, 12);
+‎  const emaSlow = ema(closes, 26);
+‎  const spread = Math.abs(emaFast - emaSlow) / emaSlow;
+‎  const trend = Math.min(100, spread * 2000);
+‎
+‎  let direction = "neutral";
+‎  if (emaFast > emaSlow && trend > 20) direction = "bullish";
+‎  else if (emaFast < emaSlow && trend > 20) direction = "bearish";
+‎
+‎  const combined = Math.round(0.5 * vol + 0.5 * trend);
+‎  return { vol, trend, combined, direction };
+‎}
+‎
+‎function ema(values, period) {
+‎  const k = 2 / (period + 1);
+‎  let e = values[0];
+‎  for (let i = 1; i < values.length; i++) e = values[i] * k + e * (1 - k);
+‎  return e;
+‎}
+‎
+‎function atr(highs, lows, closes, period) {
+‎  const trs = [];
+‎  for (let i = 1; i < closes.length; i++) {
+‎    const tr = Math.max(
+‎      highs[i] - lows[i],
+‎      Math.abs(highs[i] - closes[i - 1]),
+‎      Math.abs(lows[i] - closes[i - 1])
+‎    );
+‎    trs.push(tr);
+‎  }
+‎  const slice = trs.slice(-period);
+‎  return slice.reduce((a, b) => a + b, 0) / slice.length;
+‎}
+‎
+‎function renderTile(symbol) {
+‎  const s = state[symbol];
+‎  const tile = document.querySelector(`.tile[data-symbol="${symbol}"]`);
+‎  if (!tile) return;
+‎  tile.querySelector(".tile-score").textContent = s.score || "—";
+‎  tile.querySelector(".tile-price").textContent = s.price ? s.price.toFixed(s.price > 100 ? 2 : 5) : "—";
+‎  tile.classList.remove("bullish", "bearish", "neutral");
+‎  const dir = tile.querySelector(".tile-dir");
+‎  if (s.direction === "bullish" && s.score >= THRESHOLD) {
+‎    tile.classList.add("bullish"); dir.textContent = "↗";
+‎  } else if (s.direction === "bearish" && s.score >= THRESHOLD) {
+‎    tile.classList.add("bearish"); dir.textContent = "↘";
+‎  } else {
+‎    tile.classList.add("neutral"); dir.textContent = "·";
+‎  }
+‎}
+‎
+‎function updateExecutionPanel() {
+‎  const s = state[selectedAsset];
+‎  if (!s) return;
+‎  document.getElementById("sigScore").textContent = s.score ? s.score + "%" : "—";
+‎  const eligible = s.score >= THRESHOLD;
+‎  document.getElementById("btnCall").disabled = !eligible;
+‎  document.getElementById("btnPut").disabled = !eligible;
+‎  document.getElementById("callPct").textContent = eligible ? "87%" : "—";
+‎  document.getElementById("putPct").textContent = eligible ? "87%" : "—";
+‎}
+‎
+‎// ─── Boot ───
+‎log("BinaryScope booting via proxy");
+‎connect();
+‎</script>
+‎</body>
+‎</html>
+‎
