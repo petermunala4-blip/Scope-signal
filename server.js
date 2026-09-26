@@ -23,7 +23,12 @@ const wss = new WebSocket.Server({ server });
 
 wss.on("connection", (client) => {
   console.log("Client connected");
-  const deriv = new WebSocket(DERIV_URL);
+  const deriv = new WebSocket(DERIV_URL, {
+  headers: {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Origin": "https://scope-signal-proxy.onrender.com"
+  }
+});
   const buffer = [];
 
   deriv.on("open", () => {
