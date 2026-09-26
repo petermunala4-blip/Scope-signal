@@ -4,7 +4,7 @@ const path = require("path");
 const WebSocket = require("ws");
 
 const PORT = process.env.PORT || 8080;
-const DERIV_URL = "wss://ws.derivws.com/websockets/v3?app_id=34uyXsvpWw49ADvhNsk3y";
+const DERIV_URL = "wss://ws.binaryws.com/websockets/v3?app_id=34uyXsvpWw49ADvhNsk3y";
 
 const server = http.createServer((req, res) => {
   if (req.url === "/" || req.url === "/index.html") {
