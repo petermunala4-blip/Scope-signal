@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Even/Odd Analyzer</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: monospace; background: #0a0e17; color: #d1d4dc; padding: 12px; min-height: 100vh; }
+.container { max-width: 700px; margin: 0 auto; }
+.header { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #1e2430; margin-bottom: 14px; }
+.logo { font-size: 13px; letter-spacing: 2px; color: #5d6a82; font-weight: 600; }
+.status { display: flex; align-items: center; gap: 6px; font-size: 10px; color: #5d6a82; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: #ff4d4d; }
+.dot.live { background: #00e676; box-shadow: 0 0 8px #00e676; }
+.panel { background: #11161f; border: 1px solid #1e2430; border-radius: 6px; padding: 12px; margin-bottom: 12px; }
+.panel-title { font-size: 10px; letter-spacing: 2px; color: #5d6a82; margin-bottom: 10px; display: flex; justify-content: space-between; }
+.asset-row { display: flex; gap: 6px; }
+.asset-btn { flex: 1; padding: 8px; background: #0a0e17; border: 1px solid #1e2430; border-radius: 4px; color: #8b95a8; font-family: monospace; font-size: 11px; cursor: pointer; }
+.asset-btn.active { background: #1e2430; color: #fff; border-color: #3a4658; }
+.big-digit { text-align: center; padding: 20px 0; }
+.big-digit .num { font-size: 72px; font-weight: 700; line-height: 1; }
+.big-digit .num.even { color: #00e676; }
+.big-digit .num.odd { color: #ff9800; }
+.big-digit .label { font-size: 10px; color: #5d6a82; letter-spacing: 2px; margin-top: 6px; }
+.big-digit .price { font-size: 12px; color: #5d6a82; margin-top: 8px; }
+.ratio-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ratio-box { background: #0a0e17; border: 1px solid #1e2430; border-radius: 4px; padding: 10px; text-align: center; }
+.ratio-label { font-size: 9px; letter-spacing: 1.5px; color: #5d6a82; margin-bottom: 4px; }
+.ratio-val { font-size: 22px; font-weight: 700; }
+.ratio-val.even { color: #00e676; }
+.ratio-val.odd { color: #ff9800; }
+.bar { height: 6px; background: #1e2430; border-radius: 3px; overflow: hidden; margin-top: 8px; display: flex; }
+.bar .even-fill { background: #00e676; }
+.bar .odd-fill { background: #ff9800; }
+.digit-grid { display: grid; grid-template-columns: repeat(20, 1fr); gap: 3px; }
+.digit-cell { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 10px; border-radius: 3px; font-weight: 700; }
+.digit-cell.even { background: #0d2818; color: #00e676; }
+.digit-cell.odd { background: #2a1a0e; color: #ff9800; }
+.freq-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; }
+.freq-cell { background: #0a0e17; border: 1px solid #1e2430; border-radius: 4px; padding: 6px 2px; text-align: center; }
+.freq-digit { font-size: 14px; font-weight: 700; }
+.freq-digit.even { color: #00e676; }
+.freq-digit.odd { color: #ff9800; }
+.freq-count { font-size: 9px; color: #5d6a82; margin-top: 2px; }
+.signal-box { text-align: center; padding: 16px; border-radius: 4px; font-size: 18px; font-weight: 700; letter-spacing: 2px; }
+.signal-box.wait { background: #1e2430; color: #5d6a82; }
+.signal-box.bet-even { background: #0d2818; color: #00e676; border: 1px solid #00e676; }
+.signal-box.bet-odd { background: #2a1a0e; color: #ff9800; border: 1px solid #ff9800; }
+.stats-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 10px; }
+.stat-box { background: #0a0e17; border: 1px solid #1e2430; border-radius: 4px; padding: 8px; text-align: center; }
+.stat-label { font-size: 9px; letter-spacing: 1px; color: #5d6a82; }
+.stat-val { font-size: 16px; font-weight: 700; color: #fff; margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<div class="logo">EVEN/ODD ANALYZER</div>
+<div class="status"><span class="dot" id="statusDot"></span><span id="statusText">DISCONNECTED</span></div>
+</div>
+<div class="panel">
+<div class="asset-row">
+<button class="asset-btn active" data-symbol="1HZ100V">Vol 100 (1s)</button>
+<button class="asset-btn" data-symbol="1HZ75V">Vol 75 (1s)</button>
+</div>
+</div>
+<div class="panel">
+<div class="panel-title"><span>LAST TICK</span><span id="tickCount">0 ticks</span></div>
+<div class="big-digit">
+<div class="num" id="lastDigit">—</div>
+<div class="label" id="lastParity">WAITING</div>
+<div class="price" id="lastPrice">—</div>
+</div>
+</div>
+<div class="panel">
+<div class="panel-title"><span>EVEN vs ODD</span><span>LAST 20</span></div>
+<div class="ratio-grid">
+<div class="ratio-box"><div class="ratio-label">EVEN</div><div class="ratio-val even" id="evenCount">0</div></div>
+<div class="ratio-box"><div class="ratio-label">ODD</div><div class="ratio-val odd" id="oddCount">0</div></div>
+</div>
+<div class="bar"><div class="even-fill" id="evenBar" style="width:50%"></div><div class="odd-fill" id="oddBar" style="width:50%"></div></div>
+</div>
+<div class="panel">
+<div class="panel-title"><span>LAST 20 DIGITS</span></div>
+<div class="digit-grid" id="digitGrid"></div>
+</div>
+<div class="panel">
+<div class="panel-title"><span>DIGIT FREQUENCY (LAST 100)</span></div>
+<div class="freq-grid" id="freqGrid"></div>
+</div>
+<div class="panel">
+<div class="panel-title"><span>SIGNAL</span><span>7+ SAME SIDE</span></div>
+<div class="signal-box wait" id="signalBox">WAITING</div>
+<div class="stats-grid">
+<div class="stat-box"><div class="stat-label">SIGNALS</div><div class="stat-val" id="statSignals">0</div></div>
+<div class="stat-box"><div class="stat-label">WINS</div><div class="stat-val" id="statWins">0</div></div>
+<div class="stat-box"><div class="stat-label">WIN %</div><div class="stat-val" id="statWinPct">—</div></div>
+</div>
+</div>
+</div>
+<script>
+const PROXY_URL = "wss://scope-signal-proxy.onrender.com";
+const HISTORY_SIZE = 100;
+const WINDOW = 10;
+const THRESHOLD = 7;
+let currentSymbol = "1HZ100V";
+let ws = null;
+const state = { digits: [], prices: [], lastSignal: null, pendingBet: null, signals: 0, wins: 0, tickCount: 0 };
+
+function setStatus(live, text) {
+  document.getElementById("statusDot").className = "dot" + (live ? " live" : "");
+  document.getElementById("statusText").textContent = text;
+}
+
+function connect() {
+  ws = new WebSocket(PROXY_URL);
+  ws.onopen = () => {
+    setStatus(true, "CONNECTED");
+    ws.send(JSON.stringify({ ticks: currentSymbol, subscribe: 1 }));
+  };
+  ws.onmessage = (msg) => {
+    let data;
+    try { data = JSON.parse(msg.data); } catch (e) { return; }
+    if (data.error) { console.error(data.error); return; }
+    // The official library sends tick data in a specific format
+    if (data.tick && data.tick.symbol === currentSymbol) {
+      handleTick(data.tick.quote);
+    }
+  };
+  ws.onclose = () => { setStatus(false, "DISCONNECTED"); setTimeout(connect, 5000); };
+  ws.onerror = () => setStatus(false, "ERROR");
+}
+
+function handleTick(quoteStr) {
+  const digit = parseInt(quoteStr.slice(-1));
+  if (isNaN(digit)) return;
+  state.tickCount++;
+  state.digits.push(digit);
+  state.prices.push(parseFloat(quoteStr));
+  if (state.digits.length > HISTORY_SIZE) { state.digits.shift(); state.prices.shift(); }
+
+  if (state.pendingBet) {
+    const won = (state.pendingBet.direction === "even" && digit % 2 === 0) ||
+                (state.pendingBet.direction === "odd" && digit % 2 === 1);
+    state.signals++;
+    if (won) state.wins++;
+    state.pendingBet = null;
+  }
+
+  const recent = state.digits.slice(-WINDOW);
+  if (recent.length >= WINDOW) {
+    const evenCount = recent.filter(d => d % 2 === 0).length;
+    const oddCount = WINDOW - evenCount;
+    let signal = null;
+    if (oddCount >= THRESHOLD) signal = "even";
+    else if (evenCount >= THRESHOLD) signal = "odd";
+    state.lastSignal = signal;
+    if (signal && !state.pendingBet) state.pendingBet = { direction: signal };
+  }
+  render();
+}
+
+function render() {
+  const digits = state.digits, prices = state.prices;
+  const lastDigit = digits[digits.length - 1];
+  if (lastDigit !== undefined) {
+    const dEl = document.getElementById("lastDigit");
+    dEl.textContent = lastDigit;
+    dEl.className = "num " + (lastDigit % 2 === 0 ? "even" : "odd");
+    document.getElementById("lastParity").textContent = lastDigit % 2 === 0 ? "EVEN" : "ODD";
+    document.getElementById("lastPrice").textContent = prices[prices.length-1]?.toFixed(4) || "—";
+  }
+  document.getElementById("tickCount").textContent = state.tickCount + " ticks";
+
+  const last20 = digits.slice(-20);
+  const even20 = last20.filter(d => d % 2 === 0).length;
+  const odd20 = last20.length - even20;
+  document.getElementById("evenCount").textContent = even20;
+  document.getElementById("oddCount").textContent = odd20;
+  const total = Math.max(last20.length, 1);
+  document.getElementById("evenBar").style.width = (even20 / total * 100) + "%";
+  document.getElementById("oddBar").style.width = (odd20 / total * 100) + "%";
+
+  const grid = document.getElementById("digitGrid");
+  grid.innerHTML = "";
+  digits.slice(-20).reverse().forEach(d => {
+    const c = document.createElement("div");
+    c.className = "digit-cell " + (d % 2 === 0 ? "even" : "odd");
+    c.textContent = d;
+    grid.appendChild(c);
+  });
+
+  const freq = [0,0,0,0,0,0,0,0,0,0];
+  digits.forEach(d => freq[d]++);
+  const fg = document.getElementById("freqGrid");
+  fg.innerHTML = "";
+  for (let i = 0; i < 10; i++) {
+    const c = document.createElement("div");
+    c.className = "freq-cell";
+    c.innerHTML = '<div class="freq-digit ' + (i % 2 === 0 ? 'even' : 'odd') + '">' + i + '</div><div class="freq-count">' + freq[i] + '</div>';
+    fg.appendChild(c);
+  }
+
+  const box = document.getElementById("signalBox");
+  if (state.pendingBet) {
+    box.textContent = "BET " + state.pendingBet.direction.toUpperCase();
+    box.className = "signal-box " + (state.pendingBet.direction === "even" ? "bet-even" : "bet-odd");
+  } else if (state.lastSignal) {
+    box.textContent = "SIGNAL: " + state.lastSignal.toUpperCase();
+    box.className = "signal-box " + (state.lastSignal === "even" ? "bet-even" : "bet-odd");
+  } else {
+    box.textContent = "WAITING";
+    box.className = "signal-box wait";
+  }
+
+  document.getElementById("statSignals").textContent = state.signals;
+  document.getElementById("statWins").textContent = state.wins;
+  document.getElementById("statWinPct").textContent = state.signals > 0 ? ((state.wins / state.signals) * 100).toFixed(1) + "%" : "—";
+}
+
+document.querySelectorAll(".asset-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    if (btn.dataset.symbol === currentSymbol) return;
+    document.querySelectorAll(".asset-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    if (ws && ws.readyState === 1) ws.send(JSON.stringify({ forget_all: "ticks" }));
+    currentSymbol = btn.dataset.symbol;
+    state.digits = []; state.prices = []; state.pendingBet = null;
+    state.signals = 0; state.wins = 0; state.tickCount = 0;
+    if (ws && ws.readyState === 1) ws.send(JSON.stringify({ ticks: currentSymbol, subscribe: 1 }));
+  });
+});
+
+connect();
+</script>
+</body>
+  </html>
